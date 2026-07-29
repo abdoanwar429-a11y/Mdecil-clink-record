@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة الحجوزات والعيادة</title>
+    <link rel="manifest" id="manifest-link">
+    <meta name="theme-color" content="#0f4c81">
+    
+    <style>
+        /* نفس الـ CSS السابق */
+        :root {
+            --primary: #0f4c81;
+            --primary-light: #3a6ea5;
+            --accent: #e8f0fe;
+            --danger: #d32f2f;
+            --success: #2e7d32;
+            --warning: #f9a825;
+            --bg: #f5f7fa;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 12px rgba(0,0,0,0.05);
+            --radius: 12px;
+            --sidebar-width: 240px;
+            --header-height: 64px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', 'Tahoma', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--primary);
+            color: white;
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100%;
+            padding: 20px 0;
+            z-index: 100;
+            transition: transform 0.3s ease;
+        }
+        .sidebar-header { padding: 0 20px 30px; border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 20px; }
+        .sidebar-header h2 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .sidebar-header small { opacity: 0.8; font-size: 12px; }
+        .nav-item {
+            display: flex; align-items: center; gap: 10px; padding: 12px 20px; cursor: pointer;
+            font-weight: 600; transition: background 0.2s; margin: 4px 10px; border-radius: 8px;
+        }
+        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.2); }
+        .nav-item .icon { font-size: 20px; width: 24px; text-align: center; }
+
+        .main-content { margin-right: var(--sidebar-width); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+        .top-bar {
+            background: var(--card-bg); height: var(--header-height); box-shadow: var(--shadow);
+            display: flex; justify-content: space-between; align-items: center; padding: 0 24px;
+            position: sticky; top: 0; z-index: 50;
+        }
+        .top-bar h1 { font-size: 22px; color: var(--primary); }
+        .user-info { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+        .logout-btn { background: none; border: none; color: var(--danger); cursor: pointer; font-weight: bold; font-size: 14px; }
+
+        .page-content { padding: 24px; flex: 1; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: var(--card-bg); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); border-right: 4px solid; }
+        .stat-card.blue { border-color: var(--primary); }
+        .stat-card.red { border-color: var(--danger); }
+        .stat-card.green { border-color: var(--success); }
+        .stat-card .label { font-size: 14px; color: var(--text-light); margin-bottom: 8px; }
+        .stat-card .value { font-size: 28px; font-weight: 700; }
+
+        .card { background: var(--card-bg); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); margin-bottom: 24px; }
+        .mobile-tabs { display: none; background: white; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; overflow: hidden; }
+        .mobile-tab { flex: 1; text-align: center; padding: 12px; font-weight: 600; background: #f1f5f9; cursor: pointer; }
+        .mobile-tab.active { background: var(--primary); color: white; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: var(--text); font-size: 14px; }
+        input, textarea, select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 15px; transition: border 0.2s; }
+        input:focus, textarea:focus { outline: none; border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(15,76,129,0.1); }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; transition: background 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #0a3a5e; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .btn-sm { padding: 6px 14px; font-size: 13px; }
+        .btn-block { width: 100%; justify-content: center; }
+
+        .flex-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .flex-row > * { flex: 1; min-width: 140px; }
+
+        .list-item { background: var(--card-bg); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; border-right: 4px solid var(--primary); position: relative; }
+        .item-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; }
+        .item-title { font-size: 18px; font-weight: 700; color: var(--primary); }
+        .item-actions { display: flex; gap: 8px; }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+        .info-row { display: flex; gap: 6px; font-size: 14px; }
+        .info-label { font-weight: 600; color: var(--text); min-width: 90px; }
+        .info-value { color: var(--text-light); word-break: break-word; }
+
+        .search-input { margin-bottom: 20px; }
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+        .activation-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .activation-box { background: white; padding: 30px; border-radius: 12px; text-align: center; max-width: 420px; width: 90%; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .device-id { background: #f1f5f9; padding: 8px 16px; border-radius: 6px; font-family: monospace; font-size: 20px; color: var(--danger); margin: 15px 0; display: inline-block; border: 1px dashed var(--danger); }
+
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-right: 0; }
+            .mobile-tabs { display: flex; }
+            .form-grid { grid-template-columns: 1fr; }
+            .settings-grid { grid-template-columns: 1fr; }
+            .top-bar h1 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- شاشة التفعيل -->
+<div id="activationScreen" class="activation-overlay" style="display:flex">
+    <div class="activation-box">
+        <h2 style="color: var(--primary);">تنشيط الاشتراك</h2>
+        <p>أرسل الكود التالي للمبرمج لتفعيل النسخة</p>
+        <div id="displayDeviceID" class="device-id">----</div>
+        <input type="text" id="activationInput" placeholder="أدخل كود التفعيل السنوي" style="margin:10px 0; width:100%">
+        <button class="btn btn-primary btn-block" onclick="validateActivation()">تفعيل الآن</button>
+        <p id="actError" style="color:red; margin-top:8px; font-size:13px;"></p>
+    </div>
+</div>
+
+<!-- واجهة تسجيل الدخول -->
+<div id="loginScreen" class="activation-overlay" style="display:none">
+    <div class="activation-box">
+        <h2 style="color: var(--primary); margin-bottom: 15px;">نظام العيادة</h2>
+        <div id="loginFormContainer">
+            <input type="text" id="user" placeholder="اسم المستخدم" autocomplete="off" style="width:100%; margin:10px 0">
+            <input type="password" id="pass" placeholder="كلمة المرور" autocomplete="new-password" style="width:100%; margin-bottom:15px">
+            <button class="btn btn-primary btn-block" onclick="checkLogin()">دخول لوحة التحكم</button>
+            <hr style="margin: 20px 0; border:0; border-top:1px solid #eee;">
+            <button class="btn btn-outline btn-block" onclick="showPatientPortal()">🌐 الدخول لحجز موعد (للمرضى)</button>
+        </div>
+    </div>
+</div>
+
+<!-- واجهة حجز المريض عبر الإنترنت -->
+<div id="patientPortalScreen" class="activation-overlay" style="display:none">
+    <div class="activation-box" style="max-width: 480px; text-align: right;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="color: var(--primary);">حجز موعد جديد بالعيادة</h2>
+            <button class="logout-btn" onclick="location.reload()">العودة</button>
+        </div>
+        <p style="font-size: 13px; color: var(--text-light); margin-bottom: 15px;">املأ البيانات أدناه لحجز موعدك وسيصلك تأكيد من العيادة:</p>
+        <div class="form-group"><label>اسم المريض الثلاثي</label><input type="text" id="webName" placeholder="أدخل اسمك الكامل"></div>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group"><label>العمر</label><input type="number" id="webAge" placeholder="العمر"></div>
+            <div class="form-group"><label>رقم الهاتف</label><input type="tel" id="webPhone" placeholder="07xxxxxxxx"></div>
+        </div>
+        <div class="form-group"><label>مكان السكن</label><input type="text" id="webAddress" placeholder="المنطقة / المدينة"></div>
+        <div class="form-group"><label>موعد الحجز المطلوب (التاريخ والوقت)</label><input type="datetime-local" id="webBookingTime"></div>
+        <div class="form-group"><label>سبب الزيارة / ملاحظات</label><textarea id="webCase" rows="2" placeholder="وصف موجز للحالة..."></textarea></div>
+        <button class="btn btn-primary btn-block" onclick="submitWebBooking()">إرسال طلب الحجز</button>
+        <p id="webBookingMsg" style="margin-top:10px; font-size:14px; text-align:center;"></p>
+    </div>
+</div>
+
+<!-- التطبيق الرئيسي (لوحة تحكم الطبيب) -->
+<div id="mainApp" style="display:none; width:100%;">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>🏥 <span id="sidebarClinicName">العيادة</span></h2>
+            <small id="sidebarExpiry"></small>
+        </div>
+        <nav>
+            <div class="nav-item active" data-tab="patients"><span class="icon">📋</span> سجل الزيارات</div>
+            <div class="nav-item" data-tab="onlineBookings"><span class="icon">🌐</span> طلبات الحجز النت <span id="badgeOnline" style="background:var(--danger); color:white; padding:2px 6px; border-radius:10px; font-size:11px; display:none;">0</span></div>
+            <div class="nav-item" data-tab="expenses"><span class="icon">💰</span> المصاريف</div>
+            <div class="nav-item" data-tab="settings"><span class="icon">⚙️</span> الإعدادات</div>
+        </nav>
+    </div>
+    <div class="main-content">
+        <header class="top-bar">
+            <h1 id="topBarTitle">سجل الزيارات</h1>
+            <div class="user-info">
+                <span>👤 admin</span>
+                <button class="logout-btn" onclick="location.reload()">تسجيل الخروج</button>
+            </div>
+        </header>
+        <div class="mobile-tabs" id="mobileTabs">
+            <div class="mobile-tab active" data-mtab="patients">الزيارات</div>
+            <div class="mobile-tab" data-mtab="onlineBookings">الحجوزات</div>
+            <div class="mobile-tab" data-mtab="expenses">المصاريف</div>
+            <div class="mobile-tab" data-mtab="settings">الإعدادات</div>
+        </div>
+        <div class="page-content" id="pageContent"></div>
+    </div>
+</div>
+
+<script>
+    // ======================= إعدادات JSONBIN الخاصة بك =======================
+    const BIN_ID = "6a64f147f5f4af5e29c07248";
+    const API_KEY = "$2a$10$zdwqZKupcLvV8up1SNlFm.9A6y5g4PBECJtdhOYIlNesKH.5UNxuS";
+    
+    const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+    let db = { 
+        settings: { clinicName: "عيادة الطبيب", expiryDate: null }, 
+        patients: {}, 
+        visits: [], 
+        expenses: [], 
+        onlineBookings: [] 
+    };
+
+    // ---------------------- دوال البيانات (مع JSONBin) ----------------------
+    async function loadRemoteData() {
+        try {
+            const response = await fetch(JSONBIN_URL, {
+                headers: { 'X-Master-Key': API_KEY }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                db = data.record;
+                if(!db.onlineBookings) db.onlineBookings = [];
+                if(!db.patients) db.patients = {};
+                if(!db.visits) db.visits = [];
+                if(!db.expenses) db.expenses = [];
+            } else {
+                await saveDB();
+            }
+        } catch (err) {
+            console.warn("خطأ في الاتصال بـ jsonbin، سيتم استخدام نسخة محلية احتياطية");
+            const local = localStorage.getItem('CLINIC_DB_BACKUP');
+            if (local) { try { db = JSON.parse(local); } catch(e) {} }
+        }
+        applySettings();
+        switchTab('patients');
+    }
+
+    async function saveDB() {
+        localStorage.setItem('CLINIC_DB_BACKUP', JSON.stringify(db));
+        try {
+            const response = await fetch(JSONBIN_URL, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY
+                },
+                body: JSON.stringify(db)
+            });
+            if (!response.ok) {
+                console.warn("فشل الحفظ على jsonbin");
+            }
+        } catch (e) {
+            console.warn("فشل الاتصال بـ jsonbin، تم الحفظ محلياً فقط");
+        }
+    }
+
+    // =============================================
+    // دوال واتساب (مع تحسين فتح التطبيق)
+    // =============================================
+    function formatPhoneForWhatsApp(phone) {
+        if (!phone) return '';
+        let cleaned = phone.replace(/\D/g, ''); // حذف كل شيء غير رقمي
+        if (cleaned.startsWith('0')) {
+            cleaned = '963' + cleaned.substring(1); // تحويل 095xxxx إلى 96395xxxx
+        } else if (!cleaned.startsWith('963')) {
+            cleaned = '963' + cleaned; // إضافة مفتاح سوريا
+        }
+        return cleaned;
+    }
+
+    function sendWhatsAppConfirmation(patientName, phone, bookingTime, clinicName) {
+        const formattedPhone = formatPhoneForWhatsApp(phone);
+        if (!formattedPhone) {
+            alert("رقم الهاتف غير صالح، لم نتمكن من إرسال رسالة واتساب.");
+            return;
+        }
+
+        let dateObj = new Date(bookingTime);
+        let formattedDate = dateObj.toLocaleDateString('ar-EG');
+        let formattedTime = dateObj.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+        // تنسيق رسالة التأكيد
+        const message = `مرحباً ${patientName}،\nتم تأكيد حجزك في عيادة ${clinicName}.\nالموعد: ${formattedDate} الساعة ${formattedTime}.\nنتمنى لك الشفاء العاجل.`;
+        const encodedMessage = encodeURIComponent(message);
+        const waLink = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+
+        // استخدام window.location.href لفتح التطبيق مباشرة وتجنب حظر النوافذ
+        window.location.href = waLink;
+    }
+
+    // ---------------------- التفعيل وتسجيل الدخول ----------------------
+    window.addEventListener('DOMContentLoaded', () => {
+        if(window.location.hash === '#patient') {
+            document.getElementById('activationScreen').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('patientPortalScreen').style.display = 'flex';
+        } else {
+            checkActivationStatus();
+        }
+    });
+
+    let deviceId = localStorage.getItem('CLINIC_SERIAL') || Math.floor(1000 + Math.random() * 9000).toString();
+    localStorage.setItem('CLINIC_SERIAL', deviceId);
+    document.getElementById('displayDeviceID').innerText = deviceId;
+
+    function checkActivationStatus() {
+        if(window.location.hash === '#patient') return;
+        const locked = localStorage.getItem('APP_LOCKED');
+        if (locked === 'false') {
+            document.getElementById('activationScreen').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+        } else {
+            document.getElementById('activationScreen').style.display = 'flex';
+            document.getElementById('loginScreen').style.display = 'none';
+        }
+    }
+
+    function validateActivation() {
+        const input = document.getElementById('activationInput').value;
+        const correctCode = (parseInt(deviceId) * 7 + 500).toString();
+        if (input === correctCode) {
+            localStorage.setItem('APP_LOCKED', 'false');
+            let d = new Date();
+            d.setFullYear(d.getFullYear() + 1);
+            db.settings.expiryDate = d.toISOString();
+            saveDB();
+            alert("تم التفعيل بنجاح!");
+            location.reload();
+        } else {
+            document.getElementById('actError').innerText = "كود التفعيل غير صحيح!";
+        }
+    }
+
+    function checkLogin() {
+        if(document.getElementById('user').value === 'admin' && document.getElementById('pass').value === 'admin') {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            loadRemoteData();
+            document.getElementById('sidebar').classList.add('open');
+        } else { alert("خطأ في بيانات الدخول"); }
+    }
+
+    function showPatientPortal() {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('patientPortalScreen').style.display = 'flex';
+    }
+
+    async function submitWebBooking() {
+        const name = document.getElementById('webName').value.trim();
+        const age = document.getElementById('webAge').value.trim();
+        const phone = document.getElementById('webPhone').value.trim();
+        const address = document.getElementById('webAddress').value.trim();
+        const bookingTime = document.getElementById('webBookingTime').value;
+        const pCase = document.getElementById('webCase').value.trim();
+        const msgEl = document.getElementById('webBookingMsg');
+
+        if(!name || !phone || !bookingTime) {
+            msgEl.style.color = "red";
+            msgEl.innerText = "الرجاء إدخال الاسم، ورقم الهاتف، وتوقيت الموعد المطلوب.";
+            return;
+        }
+
+        try {
+            const response = await fetch(JSONBIN_URL, { headers: { 'X-Master-Key': API_KEY } });
+            if (response.ok) {
+                const data = await response.json();
+                db = data.record;
+                if(!db.onlineBookings) db.onlineBookings = [];
+            }
+        } catch (err) {
+            const local = localStorage.getItem('CLINIC_DB_BACKUP');
+            if (local) { try { db = JSON.parse(local); } catch(e){} }
+        }
+
+        const newBooking = {
+            uid: Date.now(),
+            name, age, phone, address, bookingTime, pCase,
+            status: 'معلق'
+        };
+
+        db.onlineBookings.push(newBooking);
+        await saveDB();
+
+        msgEl.style.color = "green";
+        msgEl.innerText = "تم إرسال طلب حجزك بنجاح! سيتم مراجعته وتأكيده من قبل العيادة.";
+        setTimeout(() => {
+            document.getElementById('webName').value = '';
+            document.getElementById('webAge').value = '';
+            document.getElementById('webPhone').value = '';
+            document.getElementById('webAddress').value = '';
+            document.getElementById('webBookingTime').value = '';
+            document.getElementById('webCase').value = '';
+            msgEl.innerText = '';
+        }, 4000);
+    }
+
+    function applySettings() {
+        const name = db.settings?.clinicName || "عيادة الطبيب";
+        document.getElementById('sidebarClinicName').innerText = name;
+        document.getElementById('topBarTitle').innerText = name + " - لوحة التحكم";
+        updateOnlineBadge();
+    }
+
+    function updateOnlineBadge() {
+        const pendingCount = (db.onlineBookings || []).filter(b => b.status === 'معلق').length;
+        const badge = document.getElementById('badgeOnline');
+        if(badge) {
+            badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+            if(pendingCount > 0) badge.innerText = pendingCount;
+        }
+    }
+
+    const navItems = document.querySelectorAll('.nav-item');
+    const mobileTabs = document.querySelectorAll('.mobile-tab');
+    let currentTab = 'patients';
+
+    navItems.forEach(item => item.addEventListener('click', () => switchTab(item.dataset.tab)));
+    mobileTabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.mtab)));
+
+    function switchTab(tabName) {
+        currentTab = tabName;
+        navItems.forEach(n => n.classList.remove('active'));
+        mobileTabs.forEach(t => t.classList.remove('active'));
+        document.querySelector(`.nav-item[data-tab="${tabName}"]`)?.classList.add('active');
+        document.querySelector(`.mobile-tab[data-mtab="${tabName}"]`)?.classList.add('active');
+        document.getElementById('sidebar').classList.remove('open');
+
+        const container = document.getElementById('pageContent');
+        if (tabName === 'patients') container.innerHTML = renderPatientsTab();
+        else if (tabName === 'onlineBookings') container.innerHTML = renderOnlineBookingsTab();
+        else if (tabName === 'expenses') container.innerHTML = renderExpensesTab();
+        else if (tabName === 'settings') container.innerHTML = renderSettingsTab();
+
+        if (tabName === 'patients') refreshStatsAndLists();
+        else if (tabName === 'onlineBookings') renderOnlineBookingsList();
+        else if (tabName === 'expenses') renderExpensesList();
+    }
+
+    // ---------------------- الزيارات ----------------------
+    function renderPatientsTab() { 
+        return `
+            <div class="stats-grid" id="statsContainer">
+                <div class="stat-card blue"><div class="label">دخل اليوم</div><div class="value" id="statToday">0</div></div>
+                <div class="stat-card red"><div class="label">إجمالي المصاريف</div><div class="value" id="statExpenses">0</div></div>
+                <div class="stat-card green"><div class="label">الربح الصافي</div><div class="value" id="statNet">0</div></div>
+            </div>
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+                    <h3 id="formTitle">إضافة زيارة / حجز جديد</h3>
+                    <button class="btn btn-outline btn-sm" onclick="resetForm()">+ مريض جديد</button>
+                </div>
+                <input type="hidden" id="editingUid">
+                <div class="form-grid">
+                    <div class="form-group"><label>رقم الملف</label><input type="number" id="pId" oninput="autoLoadPatient()"></div>
+                    <div class="form-group"><label>اسم المريض</label><input type="text" id="pName"></div>
+                    <div class="form-group"><label>العمر</label><input type="number" id="pAge"></div>
+                    <div class="form-group"><label>رقم الهاتف</label><input type="tel" id="pPhone"></div>
+                    <div class="form-group"><label>مكان السكن</label><input type="text" id="pAddress"></div>
+                    <div class="form-group"><label>نوع الزيارة</label>
+                        <select id="pType"><option value="فوري">فوري (حضور اليوم)</option><option value="حجز مسبق">حجز مسبق</option></select>
+                    </div>
+                    <div class="form-group"><label>موعد الحجز</label><input type="datetime-local" id="pBookingTime"></div>
+                    <div class="form-group"><label>المبلغ</label><input type="number" id="pPrice" value="0"></div>
+                    <div class="form-group"><label>الدور (انتظار اليوم)</label><input type="number" id="pTurn" readonly style="background:#f0f0f0;"></div>
+                    <div class="form-group"><label>تاريخ المراجعة</label><input type="date" id="pNext"></div>
+                </div>
+                <div class="form-group"><label>التشخيص والملاحظات</label><textarea id="pCase" rows="3"></textarea></div>
+                <div class="flex-row" style="margin-top:15px">
+                    <button class="btn btn-primary" id="saveBtn" onclick="saveVisit()">حفظ الزيارة</button>
+                    <button class="btn btn-secondary" id="cancelBtn" onclick="resetForm()" style="display:none">إلغاء</button>
+                </div>
+            </div>
+            <input type="text" class="search-input" id="searchInput" onkeyup="renderVisitsList()" placeholder="🔍 بحث بالاسم أو الرقم أو الهاتف...">
+            <div id="visitListContainer"></div>
+        `;
+    }
+
+    function refreshStatsAndLists() {
+        const todayStr = new Date().toLocaleDateString('en-GB');
+        const incToday = db.visits.filter(v => v.date === todayStr).reduce((s, v) => s + v.price, 0);
+        const totalExp = db.expenses.reduce((s, e) => s + e.amount, 0);
+        const totalInc = db.visits.reduce((s, v) => s + v.price, 0);
+        document.getElementById('statToday').innerText = incToday.toLocaleString();
+        document.getElementById('statExpenses').innerText = totalExp.toLocaleString();
+        document.getElementById('statNet').innerText = (totalInc - totalExp).toLocaleString();
+        renderVisitsList();
+        updateOnlineBadge();
+    }
+
+    function renderVisitsList() {
+        const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
+        const container = document.getElementById('visitListContainer');
+        if (!container) return;
+        container.innerHTML = (db.visits || []).slice().reverse().map(v => {
+            const p = db.patients?.[v.pId];
+            if (!p) return '';
+            const searchSource = (p.name + v.pId + (p.phone || '')).toLowerCase();
+            if (!searchSource.includes(search)) return '';
+            const visitCount = db.visits.filter(x => db.patients?.[x.pId]?.name === p.name).length;
+            const formattedNext = formatDisplayDate(v.nextDate);
+            const bookingInfo = v.type === 'حجز مسبق' && v.bookingTime ? `📅 ${new Date(v.bookingTime).toLocaleString('ar-EG')}` : '';
+            return `
+                <div class="list-item" style="border-right-color: ${v.type === 'حجز مسبق' ? 'var(--warning)' : 'var(--primary)'};">
+                    <div class="item-header">
+                        <div class="item-title">${p.name} ${v.type === 'حجز مسبق' ? '📌' : ''}</div>
+                        <div class="item-actions">
+                            <button class="btn btn-outline btn-sm" onclick="editVisit(${v.uid})">✏️ تعديل</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteVisit(${v.uid})">🗑️ حذف</button>
+                        </div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-row"><span class="info-label">رقم الملف:</span><span class="info-value">${v.pId}</span></div>
+                        <div class="info-row"><span class="info-label">الدور:</span><span class="info-value">${v.turn || '---'}</span></div>
+                        <div class="info-row"><span class="info-label">النوع:</span><span class="info-value" style="color:${v.type === 'حجز مسبق' ? 'var(--warning)' : 'var(--success)'}; font-weight:bold;">${v.type || 'فوري'}</span></div>
+                        ${bookingInfo ? `<div class="info-row"><span class="info-label">موعد الحجز:</span><span class="info-value">${bookingInfo}</span></div>` : ''}
+                        <div class="info-row"><span class="info-label">عدد الزيارات:</span><span class="info-value">${visitCount}</span></div>
+                        <div class="info-row"><span class="info-label">العمر:</span><span class="info-value">${p.age || '---'}</span></div>
+                        <div class="info-row"><span class="info-label">الهاتف:</span><span class="info-value">${p.phone || '---'}</span></div>
+                        <div class="info-row"><span class="info-label">السكن:</span><span class="info-value">${p.address || '---'}</span></div>
+                        <div class="info-row"><span class="info-label">تاريخ الزيارة:</span><span class="info-value">${v.date}</span></div>
+                        <div class="info-row"><span class="info-label">تاريخ المراجعة:</span><span class="info-value" style="color:var(--primary); font-weight:bold">${formattedNext}</span></div>
+                        <div class="info-row"><span class="info-label">المبلغ:</span><span class="info-value">${v.price.toLocaleString()}</span></div>
+                    </div>
+                    <div style="margin-top:12px; white-space:pre-wrap; font-size:14px; color:var(--text-light)"><strong>التشخيص:</strong> ${v.pCase || '---'}</div>
+                </div>`;
+        }).join('');
+    }
+
+    function saveVisit() {
+        const uidStr = document.getElementById('editingUid')?.value;
+        const id = document.getElementById('pId')?.value.trim();
+        const name = document.getElementById('pName')?.value.trim();
+        if(!id || !name) return alert("الرجاء إدخال رقم الملف والاسم");
+        const pIdStr = String(id);
+        if(!db.patients) db.patients = {};
+        db.patients[pIdStr] = {
+            name, phone: document.getElementById('pPhone')?.value || '', address: document.getElementById('pAddress')?.value || '', age: document.getElementById('pAge')?.value || ''
+        };
+        const price = parseFloat(document.getElementById('pPrice')?.value) || 0;
+        const pCase = document.getElementById('pCase')?.value || '';
+        const nextDate = document.getElementById('pNext')?.value || '';
+        const type = document.getElementById('pType')?.value || 'فوري';
+        const bookingTime = document.getElementById('pBookingTime')?.value || '';
+        let turn = '', dateStr = '';
+        if(uidStr) {
+            const idx = db.visits.findIndex(v => v.uid == uidStr);
+            if(idx !== -1) {
+                turn = db.visits[idx].turn || ''; dateStr = db.visits[idx].date;
+                db.visits[idx] = { ...db.visits[idx], pId: pIdStr, price, pCase, nextDate, type, bookingTime };
+            }
+        } else {
+            dateStr = new Date().toLocaleDateString('en-GB');
+            const visitsToday = db.visits.filter(v => v.date === dateStr && v.type !== 'حجز مسبق');
+            const maxTurnToday = visitsToday.reduce((max, v) => Math.max(max, Number(v.turn) || 0), 0);
+            turn = (type === 'فوري') ? (maxTurnToday + 1) : '';
+            db.visits.push({ uid: Date.now(), pId: pIdStr, price, pCase, nextDate, turn, type, bookingTime, date: dateStr });
+        }
+        saveDB().then(() => { resetForm(); refreshStatsAndLists(); });
+    }
+
+    function editVisit(uid) {
+        const v = db.visits.find(x => x.uid == uid);
+        if (!v || !db.patients[v.pId]) return;
+        const p = db.patients[v.pId];
+        document.getElementById('editingUid').value = v.uid;
+        document.getElementById('pId').value = v.pId; document.getElementById('pName').value = p.name;
+        document.getElementById('pPhone').value = p.phone || ''; document.getElementById('pAddress').value = p.address || '';
+        document.getElementById('pAge').value = p.age || ''; document.getElementById('pPrice').value = v.price;
+        document.getElementById('pTurn').value = v.turn || ''; document.getElementById('pType').value = v.type || 'فوري';
+        document.getElementById('pBookingTime').value = v.bookingTime || '';
+        document.getElementById('pNext').value = toDateInputValue(v.nextDate);
+        document.getElementById('pCase').value = v.pCase || '';
+        document.getElementById('saveBtn').innerText = 'تحديث الزيارة';
+        document.getElementById('cancelBtn').style.display = 'inline-flex';
+        document.getElementById('formTitle').innerText = 'تعديل الزيارة/الحجز';
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    function resetForm() {
+        document.getElementById('editingUid').value = '';
+        ['pId','pName','pPhone','pAddress','pAge','pPrice','pTurn','pCase','pNext','pBookingTime'].forEach(f => {
+            const el = document.getElementById(f); if(el) el.value = '';
+        });
+        document.getElementById('pType').value = 'فوري';
+        document.getElementById('saveBtn').innerText = 'حفظ الزيارة';
+        document.getElementById('cancelBtn').style.display = 'none';
+        document.getElementById('formTitle').innerText = 'إضافة زيارة / حجز جديد';
+    }
+
+    function autoLoadPatient() {
+        const id = document.getElementById('pId')?.value;
+        const editingUid = document.getElementById('editingUid')?.value;
+        if(id && db.patients?.[id] && !editingUid) {
+            const p = db.patients[id];
+            document.getElementById('pName').value = p.name;
+            document.getElementById('pPhone').value = p.phone || '';
+            document.getElementById('pAddress').value = p.address || '';
+            document.getElementById('pAge').value = p.age || '';
+            const todayStr = new Date().toLocaleDateString('en-GB');
+            const visitsToday = db.visits.filter(v => v.date === todayStr && v.type !== 'حجز مسبق');
+            const maxTurnToday = visitsToday.reduce((max, v) => Math.max(max, Number(v.turn) || 0), 0);
+            document.getElementById('pTurn').value = maxTurnToday + 1;
+        } else if(!id) { document.getElementById('pTurn').value = ''; }
+    }
+
+    function deleteVisit(uid) {
+        if(confirm("حذف هذه الزيارة/الحجز؟")) {
+            db.visits = db.visits.filter(v => v.uid !== uid);
+            saveDB().then(() => refreshStatsAndLists());
+        }
+    }
+
+    // =============================================
+    // طلبات الحجز (مع زر واتساب الجديد)
+    // =============================================
+    function renderOnlineBookingsTab() {
+        return `
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+                    <h3>طلبات الحجز الواردة عبر الإنترنت</h3>
+                    <button class="btn btn-outline btn-sm" onclick="renderOnlineBookingsList()">🔄 تحديث القائمة</button>
+                </div>
+                <p style="font-size:14px; color:var(--text-light); margin-bottom:20px;">يمكنك قبول الحجز ليتحول تلقائياً إلى "حجز مسبق" في سجل الزيارات، أو رفضه وحذفه.</p>
+                <div id="onlineBookingsListContainer"></div>
+            </div>
+        `;
+    }
+
+    async function renderOnlineBookingsList() {
+        try {
+            const response = await fetch(JSONBIN_URL, { headers: { 'X-Master-Key': API_KEY } });
+            if (response.ok) {
+                const data = await response.json();
+                db = data.record;
+                if(!db.onlineBookings) db.onlineBookings = [];
+            }
+        } catch (err) {
+            const local = localStorage.getItem('CLINIC_DB_BACKUP');
+            if (local) { try { db = JSON.parse(local); } catch(e){} }
+        }
+
+        const container = document.getElementById('onlineBookingsListContainer');
+        if (!container) return;
+        const bookings = db.onlineBookings || [];
+        if(bookings.length === 0) {
+            container.innerHTML = `<p style="text-align:center; color:var(--text-light); padding:20px;">لا توجد طلبات حجز عبر الإنترنت حالياً.</p>`;
+            updateOnlineBadge();
+            return;
+        }
+        
+        const clinicName = db.settings?.clinicName || "عيادة الطبيب";
+
+        container.innerHTML = bookings.slice().reverse().map(b => {
+            const formattedTime = b.bookingTime ? new Date(b.bookingTime).toLocaleString('ar-EG') : '---';
+            const statusColor = b.status === 'مقبول' ? 'var(--success)' : (b.status === 'مرفوض' ? 'var(--danger)' : 'var(--warning)');
+            return `
+                <div class="list-item" style="border-right-color: ${statusColor};">
+                    <div class="item-header">
+                        <div class="item-title">${b.name} <span style="font-size:12px; padding:2px 8px; background:${statusColor}; color:white; border-radius:4px; margin-right:8px;">${b.status || 'معلق'}</span></div>
+                        <div class="item-actions">
+                            ${b.status === 'معلق' ? `
+                                <button class="btn btn-success btn-sm" onclick="acceptOnlineBooking(${b.uid})">✔️ قبول</button>
+                                <button class="btn btn-outline btn-sm" onclick="sendWhatsAppConfirmation('${b.name.replace(/'/g, "\\'")}', '${b.phone}', '${b.bookingTime}', '${clinicName}')">📱 تأكيد واتساب</button>
+                            ` : ''}
+                            <button class="btn btn-danger btn-sm" onclick="deleteOnlineBooking(${b.uid})">🗑️ حذف</button>
+                        </div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-row"><span class="info-label">الهاتف:</span><span class="info-value">${b.phone || '---'}</span></div>
+                        <div class="info-row"><span class="info-label">العمر:</span><span class="info-value">${b.age || '---'}</span></div>
+                        <div class="info-row"><span class="info-label">السكن:</span><span class="info-value">${b.address || '---'}</span></div>
+                        <div class="info-row"><span class="info-label">الموعد المطلوب:</span><span class="info-value" style="font-weight:bold; color:var(--primary);">${formattedTime}</span></div>
+                    </div>
+                    <div style="margin-top:12px; white-space:pre-wrap; font-size:14px; color:var(--text-light)"><strong>ملاحظات المريض:</strong> ${b.pCase || '---'}</div>
+                </div>`;
+        }).join('');
+        updateOnlineBadge();
+    }
+
+    async function acceptOnlineBooking(uid) {
+        const b = db.onlineBookings.find(x => x.uid == uid);
+        if(!b) return;
+        let assignedId = Math.floor(100 + Math.random() * 900);
+        while(db.patients?.[assignedId]) { assignedId++; }
+        if(!db.patients) db.patients = {};
+        db.patients[assignedId] = { name: b.name, phone: b.phone, address: b.address || '', age: b.age || '' };
+        const dateStr = new Date().toLocaleDateString('en-GB');
+        db.visits.push({
+            uid: Date.now(), pId: String(assignedId), price: 0, pCase: b.pCase || 'حجز عبر الإنترنت',
+            nextDate: '', turn: '', type: 'حجز مسبق', bookingTime: b.bookingTime, date: dateStr
+        });
+        b.status = 'مقبول';
+        await saveDB();
+
+        alert(`تم قبول الحجز بنجاح وتحويله إلى جدول الزيارات برقم ملف: ${assignedId}`);
+        renderOnlineBookingsList();
+        updateOnlineBadge();
+    }
+
+    async function deleteOnlineBooking(uid) {
+        if(confirm("هل تريد حذف هذا الطلب؟")) {
+            db.onlineBookings = db.onlineBookings.filter(x => x.uid != uid);
+            await saveDB();
+            renderOnlineBookingsList();
+            updateOnlineBadge();
+        }
+    }
+
+    // ---------------------- المصاريف ----------------------
+    function renderExpensesTab() { return `<div class="card"><h3 style="margin-bottom:16px">إضافة مصروف</h3><div class="form-grid"><div class="form-group"><label>الوصف</label><input type="text" id="expTitle"></div><div class="form-group"><label>المبلغ</label><input type="number" id="expAmount" value="0"></div><div class="form-group"><label>التاريخ</label><input type="date" id="expDate"></div></div><button class="btn btn-primary" onclick="saveExpense()" style="margin-top:15px">إضافة</button></div><div id="expenseListContainer"></div>`; }
+    function renderExpensesList() {
+        const container = document.getElementById('expenseListContainer');
+        if (!container) return;
+        container.innerHTML = (db.expenses || []).slice().reverse().map(e => `
+            <div class="list-item" style="border-right-color: var(--danger);">
+                <div class="item-header"><div class="item-title">${e.title}</div>
+                <button class="btn btn-danger btn-sm" onclick="deleteExpense(${e.uid})">حذف</button></div>
+                <div class="info-grid"><div class="info-row"><span class="info-label">المبلغ:</span><span class="info-value">${e.amount.toLocaleString()}</span></div><div class="info-row"><span class="info-label">التاريخ:</span><span class="info-value">${e.date}</span></div></div>
+            </div>`).join('');
+    }
+    function saveExpense() {
+        const title = document.getElementById('expTitle')?.value.trim();
+        const amount = parseFloat(document.getElementById('expAmount')?.value) || 0;
+        const rawDate = document.getElementById('expDate')?.value;
+        const dateStr = rawDate ? new Date(rawDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
+        if(title && amount > 0) {
+            db.expenses.push({ uid: Date.now(), title, amount, date: dateStr });
+            saveDB().then(() => { document.getElementById('expTitle').value = ''; document.getElementById('expAmount').value = ''; renderExpensesList(); });
+        }
+    }
+    function deleteExpense(uid) { if(confirm("حذف المصروف؟")) { db.expenses = db.expenses.filter(e => e.uid !== uid); saveDB().then(() => renderExpensesList()); } }
+
+    // ---------------------- الإعدادات ----------------------
+    function renderSettingsTab() {
+        const directPatientLink = window.location.origin + window.location.pathname + '#patient';
+        return `
+            <div class="settings-grid">
+                <div class="card">
+                    <h3 style="margin-bottom:16px">هوية العيادة</h3>
+                    <div class="form-group"><label>اسم العيادة / الطبيب</label><input type="text" id="clinicNameInput" value="${db.settings?.clinicName || ''}"></div>
+                    <button class="btn btn-warning" onclick="updateClinicName()">تحديث</button>
+                    <hr style="margin:16px 0">
+                    <div class="form-group">
+                        <label>رابط حجز المرضى المباشر:</label>
+                        <input type="text" readonly value="${directPatientLink}" style="background:#f1f5f9; font-size:13px;" onclick="this.select()">
+                        <small style="color:var(--text-light)">انسخ هذا الرابط وأرسله للمريض.</small>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom:16px">أدوات النسخ الاحتياطي</h3>
+                    <button class="btn btn-outline btn-block" onclick="copyBackup()">📋 نسخ احتياطي للبيانات</button>
+                    <button class="btn btn-outline btn-block" onclick="restoreBackup()" style="margin-top:8px">📥 استعادة البيانات</button>
+                    <button class="btn btn-outline btn-block" onclick="exportExcel()" style="margin-top:8px">📊 تصدير Excel</button>
+                    <hr style="margin:16px 0">
+                    <button class="btn btn-danger btn-block" onclick="clearAllData()">⚠️ مسح كل البيانات</button>
+                </div>
+            </div>`;
+    }
+
+    function updateClinicName() { const newName = document.getElementById('clinicNameInput')?.value; if(newName) { db.settings = db.settings || {}; db.settings.clinicName = newName; saveDB().then(() => applySettings()); alert("تم تحديث اسم العيادة"); } }
+    function copyBackup() { navigator.clipboard.writeText(JSON.stringify(db)).then(() => alert("تم نسخ البيانات إلى الحافظة")); }
+    function restoreBackup() { const data = prompt("الصق كود البيانات هنا:"); if(data) { try { db = JSON.parse(data); saveDB().then(() => location.reload()); } catch(e) { alert("بيانات غير صالحة"); } } }
+    function exportExcel() {
+        let txt = "رقم الملف\tالاسم\tالدور\tالنوع\tموعد الحجز\tعدد الزيارات\tالعمر\tالهاتف\tالسكن\tالتاريخ\tتاريخ المراجعة\tالمبلغ\tالتشخيص\n";
+        (db.visits || []).forEach(v => {
+            const p = db.patients?.[v.pId];
+            if (!p) return;
+            const count = db.visits.filter(x => db.patients?.[x.pId]?.name === p.name).length;
+            const bookingInfo = v.type === 'حجز مسبق' && v.bookingTime ? new Date(v.bookingTime).toLocaleString('ar-EG') : '';
+            txt += `${v.pId}\t${p.name}\t${v.turn||''}\t${v.type||'فوري'}\t${bookingInfo}\t${count}\t${p.age||''}\t${p.phone||''}\t${p.address||''}\t${v.date}\t${formatDisplayDate(v.nextDate)}\t${v.price}\t${v.pCase||''}\n`;
+        });
+        navigator.clipboard.writeText(txt).then(() => alert("تم النسخ لبرنامج Excel"));
+    }
+    function clearAllData() { if(confirm("هل أنت متأكد من مسح جميع البيانات؟ لا يمكن التراجع.")) { if(confirm("تأكيد نهائي: مسح كل البيانات")) { db = { settings: { clinicName: "عيادة الطبيب", expiryDate: null }, patients: {}, visits: [], expenses: [], onlineBookings: [] }; saveDB().then(() => location.reload()); } } }
+
+    // دوال مساعدة
+    function toDateInputValue(dateStr) { if (!dateStr) return ''; if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr; const d = new Date(dateStr); if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10); return ''; }
+    function formatDisplayDate(dateStr) { if (!dateStr) return '---'; if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) { const [year, month, day] = dateStr.split('-'); return `${day}/${month}/${year}`; } const d = new Date(dateStr); if (!isNaN(d.getTime())) return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; return dateStr; }
+</script>
+</body>
+</html>
